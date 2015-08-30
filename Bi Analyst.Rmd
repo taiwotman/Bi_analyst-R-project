@@ -1,0 +1,142 @@
+---
+title: "Predicting missing values"
+author: "Taiwo Adetiloye"
+date: "June 4, 2015"
+output: html_document
+runtime: shiny
+---
+
+```{r echo=FALSE}
+#----------------------------------Processing function here-------------------
+library(xts)
+library(forecast)
+
+predictMissingValue <- function(n,filename){
+  
+advert_clicks<- read.csv(filename,head=TRUE, stringsAsFactors= FALSE);
+#obtain date in the datetime format
+
+date1<- as.POSIXlt(strptime(advert_clicks$date, format ="%m/%d/%Y %H"))
+
+mybi_trainingset <-xts(coredata(advert_clicks), order.by=date1) #convert  to xts 
+ts_mybi_trainingset <- ts(mybi_trainingset)  # convert to time series
+
+counts_na = sum(is.na(ts_mybi_trainingset)) #counts of NA(missing values)
+total_nrows = nrow(ts_mybi_trainingset)  #get total number of rows
+na_nrows = total_nrows - counts_na # get the starting row of missing periods
+
+#n must be in the range of 2 to 15 for each data  starting from 
+# the (default)column 2, i.e. v1
+  if(n >=2 & n<=15)
+  {
+   # Use Neural network to make forecast of the missing values
+    
+    fit <- nnetar((as.numeric(ts_mybi_trainingset[1:na_nrows,2:n]))) #smoothing
+    my_forecast <-forecast(fit, counts_na) 
+    predict_missingValue  = data.frame(my_forecast)
+    y <- predict_missingValue$Point.Forecast  
+    
+  }
+  
+  else
+  {
+      print("Please enter values in range 2 to 15 for the data")
+  }
+
+x<- index(mybi_trainingset[(na_nrows+1):total_nrows]) #get the date of the NA
+
+header <- c("Date                 Prediction of NAs\n")
+cat(header)
+
+result <- paste(x, round(y, digit=2), "\n", sep= "      ")  # Print result to 2 decimal places
+    for(i in 1: counts_na)
+    {
+      cat(result[i]) #...printing
+    }
+
+} #end
+
+```
+
+
+
+```{r echo =FALSE}
+
+library(shiny)
+
+#------------------app.R-------------------Starts here
+# Define UI for dataset viewer application
+ui <- pageWithSidebar(
+  
+  # Application title
+  h3("Predict the missing values in dataset v1"),
+  
+  # Sidebar with controls to select a dataset and specify the number
+  # of observations to view
+  sidebarPanel(
+    helpText("Note: The default column selected for the training set is v1"),
+     fileInput('filename', 'Choose a CSV File',
+              accept=c('text/csv', 'text/comma-separated-values,text/plain')),
+     
+    selectInput("dataset", "Choose a dataset:", selected = "v1",
+                choices = c("v1", "v2", "v3", "v4", "v5")), 
+    # for more choices add "v6" ..,"v15" 
+    
+    submitButton("Submit to refresh")
+    ),
+  
+  # Show a summary of the dataset and an HTML table with the requested
+  # number of observations
+  mainPanel(
+    
+    verbatimTextOutput("answers") 
+    
+  )
+)
+#-------------------end UI.R------------------------
+
+#------------------Server.R ------------------Starts here
+# Define server logic required to summarize and view the selected dataset
+
+server <-function(input, output) {
+  
+   # Once a file has been downloaded, input$filename is a data frame with some information #about it.
+  theFile <- reactive({
+    downloadedFile <- input$filename
+    
+    if (is.null(downloadedFile)) return(NULL)
+    
+    downloadedFile$datapath
+  })
+  
+  output$answers <-renderPrint(
+  {
+     myFile <- theFile()
+    
+    if (is.null(myFile)) 
+      return(cat("Please upload correct data file for prediction of missing values"))
+      
+           if(input$dataset =="v1"){predictMissingValue(2,myFile)}
+           else if(input$dataset =="v2"){predictMissingValue(3,myFile)}
+           else if(input$dataset =="v3"){predictMissingValue(4,myFile)}
+           else if(input$dataset =="v4"){predictMissingValue(5,myFile)}
+           else if(input$dataset =="v5"){predictMissingValue(6,myFile)}
+   
+          
+  })
+  
+}
+
+shinyApp(ui,server)
+#------------------end Server.R--------------------
+
+```
+
+
+
+
+
+
+
+  
+

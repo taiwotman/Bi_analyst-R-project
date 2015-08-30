@@ -4,4 +4,4 @@ The R coding was performed  Knitr E Markdown and  the UI employed Shiny_Dashboar
 
 Methodology involved the use of Neural network for time-series prediciton
 
-Possible use_case can be found in fraud detection given  some transactional data.
+Use case: Fraud detection given  some transactional data.
